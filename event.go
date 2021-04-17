@@ -105,9 +105,7 @@ func (pub Mapping) Handle(ctx context.Context, ev Event) error {
 // Publish implements Publisher for Mapping.
 func (pub Mapping) Publish(ctx context.Context, ev Event) error {
 	if sub, ok := pub[ev.Type()]; ok {
-		if err := sub.Handle(ctx, ev); err != nil {
-			return err
-		}
+		return sub.Handle(ctx, ev)
 	}
 	return nil
 }
