@@ -143,6 +143,35 @@ func TestMappingError(t *testing.T) {
 	}
 }
 
+func TestFunc(t *testing.T) {
+	ctx := context.Background()
+	var handled []event.Event
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Func(func(ctx context.Context, ev event.Event) error {
+			handled = append(handled, ev)
+			return nil
+		})).
+		On(eventTypeUpdated, event.Func(func(ctx context.Context, ev event.Event) error {
+			return errors.New("handle error")
+		}))
+	evs := []event.Event{eventCreated(1), eventUpdated(2)}
+	for _, ev := range evs {
+		err := pub.Publish(ctx, ev)
+		if ev.Type() == eventTypeCreated {
+			if err != nil {
+				t.Fatalf("got error: %v", err)
+			}
+		} else {
+			if expected := "handle error"; err == nil || err.Error() != expected {
+				t.Fatalf("expected %v, got %v", expected, err)
+			}
+		}
+	}
+	if expected := evs[:1]; !reflect.DeepEqual(handled, expected) {
+		t.Errorf("handled events: expected %v, got %v", expected, handled)
+	}
+}
+
 func TestAsync(t *testing.T) {
 	ctx := context.Background()
 	sub1, sub2, sub3 := &logged{}, &logged{}, &logged{}

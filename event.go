@@ -29,6 +29,14 @@ type Publisher interface {
 	Publish(context.Context, Event) error
 }
 
+// Func is an event subscriber built from a function.
+type Func func(context.Context, Event) error
+
+// Handle implements Subscriber for Func.
+func (sub Func) Handle(ctx context.Context, ev Event) error {
+	return sub(ctx, ev)
+}
+
 // Ordered is an event subscriber to publish in specified order of subscribers.
 type Ordered []Subscriber
 
