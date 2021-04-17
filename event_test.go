@@ -154,6 +154,18 @@ func TestMappingError(t *testing.T) {
 	}
 }
 
+func TestDiscard(t *testing.T) {
+	ctx := context.Background()
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Discard)
+	evs := []event.Event{eventCreated(1)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
+	}
+}
+
 func TestFunc(t *testing.T) {
 	ctx := context.Background()
 	var handled []event.Event
@@ -180,6 +192,18 @@ func TestFunc(t *testing.T) {
 	}
 	if expected := evs[:1]; !reflect.DeepEqual(handled, expected) {
 		t.Errorf("handled events: expected %v, got %v", expected, handled)
+	}
+}
+
+func TestFuncEmpty(t *testing.T) {
+	ctx := context.Background()
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Func(nil))
+	evs := []event.Event{eventCreated(1)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
 	}
 }
 

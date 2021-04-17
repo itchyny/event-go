@@ -29,11 +29,17 @@ type Publisher interface {
 	Publish(context.Context, Event) error
 }
 
+// Discard is an event subscriber which ignores the event.
+var Discard Func
+
 // Func is an event subscriber built from a function.
 type Func func(context.Context, Event) error
 
 // Handle implements Subscriber for Func.
 func (sub Func) Handle(ctx context.Context, ev Event) error {
+	if sub == nil {
+		return nil
+	}
 	return sub(ctx, ev)
 }
 
