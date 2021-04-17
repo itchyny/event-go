@@ -26,8 +26,21 @@ type Publisher interface {
 	Publish(context.Context, Event) error
 }
 
+// Ordered is an event subscriber to publish in specified order of subscribers.
+type Ordered []Subscriber
+
+// Handle implements Subscriber for Ordered.
+func (sub Ordered) Handle(ctx context.Context, ev Event) error {
+	for _, sub := range sub {
+		if err := sub.Handle(ctx, ev); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Mapping is an event publisher for mapping event types and subscribers.
-type Mapping map[Type][]Subscriber
+type Mapping map[Type]Subscriber
 
 // NewMapping creates a new event mapping publisher.
 func NewMapping() Mapping {
@@ -38,10 +51,15 @@ func NewMapping() Mapping {
 // publisher to allow method chaining. Note that this method is not goroutine
 // safe so register all the subscribers before start event publishing.
 func (pub Mapping) On(typ Type, sub Subscriber) Mapping {
-	if _, ok := pub[typ]; !ok {
-		pub[typ] = []Subscriber{}
+	if s, ok := pub[typ]; ok {
+		if o, ok := s.(Ordered); ok {
+			pub[typ] = append(o, sub)
+		} else {
+			pub[typ] = Ordered{s, sub}
+		}
+	} else {
+		pub[typ] = sub
 	}
-	pub[typ] = append(pub[typ], sub)
 	return pub
 }
 
@@ -52,11 +70,9 @@ func (pub Mapping) Handle(ctx context.Context, ev Event) error {
 
 // Publish implements Publisher for Mapping.
 func (pub Mapping) Publish(ctx context.Context, ev Event) error {
-	if subs, ok := pub[ev.Type()]; ok {
-		for _, sub := range subs {
-			if err := sub.Handle(ctx, ev); err != nil {
-				return err
-			}
+	if sub, ok := pub[ev.Type()]; ok {
+		if err := sub.Handle(ctx, ev); err != nil {
+			return err
 		}
 	}
 	return nil
