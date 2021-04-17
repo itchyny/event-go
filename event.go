@@ -138,14 +138,15 @@ func (pub *Buffer) Publish(_ context.Context, ev Event) error {
 
 // Dispatch all the buffered events.
 func (pub *Buffer) Dispatch(ctx context.Context) error {
-	var err error
-	for l := len(pub.events); l > 0; l = len(pub.events) {
-		for _, ev := range pub.events {
-			if e := pub.publisher.Publish(ctx, ev); e != nil {
-				err = e
-			}
+	var (
+		ev  Event
+		err error
+	)
+	for len(pub.events) != 0 {
+		ev, pub.events = pub.events[0], pub.events[1:]
+		if e := pub.publisher.Publish(ctx, ev); e != nil {
+			err = e
 		}
-		pub.events = pub.events[l:]
 	}
 	return err
 }
