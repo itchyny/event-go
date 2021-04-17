@@ -90,7 +90,7 @@ func NewMapping() Mapping {
 
 // On registers the subscriber to listen on the event. This method returns the
 // publisher to allow method chaining. Note that this method is not goroutine
-// safe so register all the subscribers before start event publishing.
+// safe so register all the subscribers before starting event publishing.
 func (pub Mapping) On(typ Type, sub Subscriber) Mapping {
 	if s, ok := pub[typ]; ok {
 		if o, ok := s.(Ordered); ok {
@@ -117,8 +117,8 @@ func (pub Mapping) Publish(ctx context.Context, ev Event) error {
 	return nil
 }
 
-// Buffer is an event publisher for delaying event publishing. This is useful
-// for buffering all the events while a transaction and publishing them only
+// Buffer is an event publisher for delaying event dispatching. This is useful
+// for buffering all the events while a transaction and dispatching them only
 // after the transaction succeeded. This publisher is not goroutine safe, so
 // create a new buffered publisher each request.
 type Buffer struct {
