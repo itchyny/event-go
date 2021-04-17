@@ -111,3 +111,42 @@ func (pub Mapping) Publish(ctx context.Context, ev Event) error {
 	}
 	return nil
 }
+
+// Buffer is an event publisher for delaying event publishing. This is useful
+// for buffering all the events while a transaction and publishing them only
+// after the transaction succeeded. This publisher is not goroutine safe, so
+// create a new buffered publisher each request.
+type Buffer struct {
+	publisher Publisher
+	events    []Event
+}
+
+// NewBuffer creates a new event buffered publisher.
+func NewBuffer(pub Publisher) *Buffer {
+	return &Buffer{publisher: pub}
+}
+
+// Handle implements Subscriber for Buffer.
+func (pub *Buffer) Handle(ctx context.Context, ev Event) error {
+	return pub.Publish(ctx, ev)
+}
+
+// Publish implements Publisher for Buffer.
+func (pub *Buffer) Publish(_ context.Context, ev Event) error {
+	pub.events = append(pub.events, ev)
+	return nil
+}
+
+// Dispatch all the buffered events.
+func (pub *Buffer) Dispatch(ctx context.Context) error {
+	var err error
+	for l := len(pub.events); l > 0; l = len(pub.events) {
+		for _, ev := range pub.events {
+			if e := pub.publisher.Publish(ctx, ev); e != nil {
+				err = e
+			}
+		}
+		pub.events = pub.events[l:]
+	}
+	return err
+}

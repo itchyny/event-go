@@ -42,7 +42,7 @@ func (eventOther) Type() event.Type {
 
 type logged []event.Event
 
-func (sub *logged) Handle(ctx context.Context, ev event.Event) error {
+func (sub *logged) Handle(_ context.Context, ev event.Event) error {
 	*sub = append(*sub, ev)
 	return nil
 }
@@ -53,7 +53,7 @@ func (sub logged) Events() []event.Event {
 
 type suberr struct{}
 
-func (sub suberr) Handle(ctx context.Context, ev event.Event) error {
+func (sub suberr) Handle(context.Context, event.Event) error {
 	return errors.New("handle error")
 }
 
@@ -210,5 +210,51 @@ func TestAsyncError(t *testing.T) {
 	}
 	if expected := evs[:]; !reflect.DeepEqual(sub2.Events(), expected) {
 		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
+	}
+}
+
+func TestBuffer(t *testing.T) {
+	ctx := context.Background()
+	sub1, sub2 := &logged{}, &logged{}
+	var pub *event.Buffer
+	pub = event.NewBuffer(
+		event.NewMapping().
+			On(eventTypeCreated, sub1).
+			On(eventTypeCreated, sub2).
+			On(eventTypeUpdated, sub2).
+			On(eventTypeOther, sub2).
+			On(eventTypeUpdated, event.Func(func(ctx context.Context, ev event.Event) error {
+				if int(ev.(eventUpdated)) == 3 {
+					return errors.New("handle error")
+				}
+				return pub.Publish(ctx, eventOther(3))
+			})),
+	)
+	evs := []event.Event{eventCreated(1), eventUpdated(2)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
+	}
+	if expected := evs[:0]; !reflect.DeepEqual(sub1.Events(), expected) {
+		t.Errorf("sub1 handled events: expected %v, got %v", expected, sub1.Events())
+	}
+	if expected := evs[:0]; !reflect.DeepEqual(sub2.Events(), expected) {
+		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
+	}
+	if err := pub.Dispatch(ctx); err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+	if expected := evs[:1]; !reflect.DeepEqual(sub1.Events(), expected) {
+		t.Errorf("sub1 handled events: expected %v, got %v", expected, sub1.Events())
+	}
+	if expected := append(evs, eventOther(3)); !reflect.DeepEqual(sub2.Events(), expected) {
+		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
+	}
+	if err := pub.Handle(ctx, eventUpdated(3)); err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+	if err, expected := pub.Dispatch(ctx), "handle error"; err == nil || err.Error() != expected {
+		t.Fatalf("expected %v, got %v", expected, err)
 	}
 }
