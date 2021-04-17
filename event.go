@@ -1,6 +1,9 @@
 package event
 
-import "context"
+import (
+	"context"
+	"sync"
+)
 
 // Type is the event type. The underlying type is int to define nonduplicate
 // event types with iota and to quickly selecting the subscribers on a new event.
@@ -37,6 +40,29 @@ func (sub Ordered) Handle(ctx context.Context, ev Event) error {
 		}
 	}
 	return nil
+}
+
+// Async is an event subscriber to publish events asynchronously.
+type Async []Subscriber
+
+// Handle implements Subscriber for Async.
+func (sub Async) Handle(ctx context.Context, ev Event) error {
+	var (
+		wg   sync.WaitGroup
+		once sync.Once
+		err  error
+	)
+	wg.Add(len(sub))
+	for _, sub := range sub {
+		go func(sub Subscriber) {
+			defer wg.Done()
+			if e := sub.Handle(ctx, ev); e != nil {
+				once.Do(func() { err = e })
+			}
+		}(sub)
+	}
+	wg.Wait()
+	return err
 }
 
 // Mapping is an event publisher for mapping event types and subscribers.
