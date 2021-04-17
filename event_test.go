@@ -138,7 +138,7 @@ func TestMappingError(t *testing.T) {
 	if expected := evs[:1]; !reflect.DeepEqual(sub1.Events(), expected) {
 		t.Errorf("sub1 handled events: expected %v, got %v", expected, sub1.Events())
 	}
-	if expected := evs[1:3]; !reflect.DeepEqual(sub2.Events(), expected) {
+	if expected := evs[:3]; !reflect.DeepEqual(sub2.Events(), expected) {
 		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
 	}
 }
@@ -183,13 +183,13 @@ func TestAsync(t *testing.T) {
 			t.Fatalf("got error: %v", err)
 		}
 	}
-	if expected := evs[:1]; !reflect.DeepEqual(sub1.Events(), expected) {
+	if expected := evs[:]; !reflect.DeepEqual(sub1.Events(), expected) {
 		t.Errorf("sub1 handled events: expected %v, got %v", expected, sub1.Events())
 	}
-	if expected := evs[:1]; !reflect.DeepEqual(sub2.Events(), expected) {
+	if expected := evs[:]; !reflect.DeepEqual(sub2.Events(), expected) {
 		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
 	}
-	if expected := evs[:1]; !reflect.DeepEqual(sub3.Events(), expected) {
+	if expected := evs[:]; !reflect.DeepEqual(sub3.Events(), expected) {
 		t.Errorf("sub3 handled events: expected %v, got %v", expected, sub3.Events())
 	}
 }
@@ -208,7 +208,7 @@ func TestAsyncError(t *testing.T) {
 	if expected := evs[:]; !reflect.DeepEqual(sub1.Events(), expected) {
 		t.Errorf("sub1 handled events: expected %v, got %v", expected, sub1.Events())
 	}
-	if expected := evs[:]; !reflect.DeepEqual(sub2.Events(), expected) {
+	if expected := []event.Event{evs[0], evs[0], evs[1], evs[1]}; !reflect.DeepEqual(sub2.Events(), expected) {
 		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
 	}
 }

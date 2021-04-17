@@ -42,12 +42,13 @@ type Ordered []Subscriber
 
 // Handle implements Subscriber for Ordered.
 func (sub Ordered) Handle(ctx context.Context, ev Event) error {
+	var err error
 	for _, sub := range sub {
-		if err := sub.Handle(ctx, ev); err != nil {
-			return err
+		if e := sub.Handle(ctx, ev); e != nil {
+			err = e
 		}
 	}
-	return nil
+	return err
 }
 
 // Async is an event subscriber to publish events asynchronously.
