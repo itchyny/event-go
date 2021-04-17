@@ -43,7 +43,7 @@ func (sub Func) Handle(ctx context.Context, ev Event) error {
 	return sub(ctx, ev)
 }
 
-// Ordered is an event subscriber to publish in specified order of subscribers.
+// Ordered is an event subscriber to handle in specified order of subscribers.
 type Ordered []Subscriber
 
 // Handle implements Subscriber for Ordered.
@@ -57,7 +57,7 @@ func (sub Ordered) Handle(ctx context.Context, ev Event) error {
 	return err
 }
 
-// Async is an event subscriber to publish events asynchronously.
+// Async is an event subscriber to handle asynchronously between subscribers.
 type Async []Subscriber
 
 // Handle implements Subscriber for Async.
