@@ -113,6 +113,17 @@ func TestMappingNested(t *testing.T) {
 	}
 }
 
+func TestMappingEmpty(t *testing.T) {
+	ctx := context.Background()
+	pub := event.NewMapping()
+	evs := []event.Event{eventOther(0)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
+	}
+}
+
 func TestMappingError(t *testing.T) {
 	ctx := context.Background()
 	sub1, sub2, sub3 := &logged{}, &logged{}, &suberr{}
@@ -172,6 +183,18 @@ func TestFunc(t *testing.T) {
 	}
 }
 
+func TestOrderedEmpty(t *testing.T) {
+	ctx := context.Background()
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Ordered{})
+	evs := []event.Event{eventCreated(1)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
+	}
+}
+
 func TestAsync(t *testing.T) {
 	ctx := context.Background()
 	sub1, sub2, sub3 := &logged{}, &logged{}, &logged{}
@@ -191,6 +214,18 @@ func TestAsync(t *testing.T) {
 	}
 	if expected := evs[:]; !reflect.DeepEqual(sub3.Events(), expected) {
 		t.Errorf("sub3 handled events: expected %v, got %v", expected, sub3.Events())
+	}
+}
+
+func TestAsyncEmpty(t *testing.T) {
+	ctx := context.Background()
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Async{})
+	evs := []event.Event{eventCreated(1)}
+	for _, ev := range evs {
+		if err := pub.Publish(ctx, ev); err != nil {
+			t.Fatalf("got error: %v", err)
+		}
 	}
 }
 
