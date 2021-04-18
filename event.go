@@ -80,6 +80,28 @@ func (sub Async) Handle(ctx context.Context, ev Event) error {
 	return err
 }
 
+// Limited is an event subscriber to limit the max concurrency of subscriber.
+type Limited struct {
+	subscriber Subscriber
+	sem        chan struct{}
+}
+
+// NewLimited creates a new limited subscriber.
+func NewLimited(sub Subscriber, max int) *Limited {
+	return &Limited{sub, make(chan struct{}, max)}
+}
+
+// Handle implements Subscriber for Limited.
+func (sub *Limited) Handle(ctx context.Context, ev Event) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case sub.sem <- struct{}{}:
+		defer func() { <-sub.sem }()
+		return sub.subscriber.Handle(ctx, ev)
+	}
+}
+
 // Mapping is an event publisher for mapping event types and subscribers.
 type Mapping map[Type]Subscriber
 

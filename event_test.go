@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/itchyny/event-go"
 )
@@ -170,11 +172,11 @@ func TestFunc(t *testing.T) {
 	ctx := context.Background()
 	var handled []event.Event
 	pub := event.NewMapping().
-		On(eventTypeCreated, event.Func(func(ctx context.Context, ev event.Event) error {
+		On(eventTypeCreated, event.Func(func(_ context.Context, ev event.Event) error {
 			handled = append(handled, ev)
 			return nil
 		})).
-		On(eventTypeUpdated, event.Func(func(ctx context.Context, ev event.Event) error {
+		On(eventTypeUpdated, event.Func(func(context.Context, event.Event) error {
 			return errors.New("handle error")
 		}))
 	evs := []event.Event{eventCreated(1), eventUpdated(2)}
@@ -269,6 +271,41 @@ func TestAsyncError(t *testing.T) {
 	}
 	if expected := []event.Event{evs[0], evs[0], evs[1], evs[1]}; !reflect.DeepEqual(sub2.Events(), expected) {
 		t.Errorf("sub2 handled events: expected %v, got %v", expected, sub2.Events())
+	}
+}
+
+func TestLimited(t *testing.T) {
+	ctx := context.Background()
+	const max = 3
+	var running, handled int32
+	sub1 := event.NewLimited(
+		event.Func(func(context.Context, event.Event) error {
+			if n := atomic.AddInt32(&running, 1); n > max {
+				t.Errorf("expected running max %d concurrency, got %d", max, n)
+			}
+			time.Sleep(10 * time.Millisecond)
+			atomic.AddInt32(&running, -1)
+			atomic.AddInt32(&handled, 1)
+			return nil
+		}),
+		max,
+	)
+	pub := event.NewMapping().
+		On(eventTypeCreated, event.Async{sub1, sub1, sub1, sub1, sub1})
+	if err := pub.Publish(ctx, eventCreated(1)); err != nil {
+		t.Fatalf("got error: %v", err)
+	}
+	if expected := int32(5); handled != expected {
+		t.Errorf("sub1 handled events: expected %v, got %v", expected, handled)
+	}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Millisecond)
+	defer cancel()
+	err, expected := pub.Publish(ctx, eventCreated(2)), context.DeadlineExceeded
+	if err == nil || err != expected {
+		t.Fatalf("expected %v, got %v", expected, err)
+	}
+	if expected := int32(5 + max); handled != expected {
+		t.Errorf("sub1 handled events: expected %v, got %v", expected, handled)
 	}
 }
 
