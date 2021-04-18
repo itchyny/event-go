@@ -118,7 +118,7 @@ func (pub Mapping) Publish(ctx context.Context, ev Event) error {
 }
 
 // Buffer is an event publisher for delaying event dispatching. This is useful
-// for buffering all the events while a transaction and dispatching them only
+// for buffering all the events during a transaction and dispatching them only
 // after the transaction succeeded. This publisher is not goroutine safe, so
 // create a new buffered publisher each request.
 type Buffer struct {
