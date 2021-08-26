@@ -8,12 +8,12 @@ test:
 	go test -v -race ./...
 
 .PHONY: lint
-lint: $(GOBIN)/golint
+lint: $(GOBIN)/staticcheck
 	go vet ./...
-	golint -set_exit_status ./...
+	staticcheck ./...
 
-$(GOBIN)/golint:
-	cd && go get golang.org/x/lint/golint
+$(GOBIN)/staticcheck:
+	go install honnef.co/go/tools/cmd/staticcheck@latest
 
 .PHONY: clean
 clean:
